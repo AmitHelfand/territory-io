@@ -127,6 +127,9 @@ namespace TerritoryIO.Gameplay
         [Range(0f, 600f)] public float crownNearEnemyAfter = 120f;
         [Tooltip("How far outside the enemy's border the crown appears, in units.")]
         [Range(0.5f, 10f)] public float crownEnemyDistance = 2f;
+        [Tooltip("Max distance (units) from you where a crown may appear, so you can reach it in time. " +
+                 "The screen is about 16 units from the middle to the top. 0 = anywhere on the map.")]
+        [Range(0f, 100f)] public float crownMaxDistance = 25f;
         [Tooltip("Crown size on the map, in units.")]
         [Range(1f, 6f)] public float crownSize = 2.5f;
         [Tooltip("How close (units) your head must get to grab it.")]

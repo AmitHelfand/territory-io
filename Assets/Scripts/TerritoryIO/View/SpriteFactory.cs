@@ -7,6 +7,40 @@ namespace TerritoryIO.View
     {
         private static Sprite square;
         private static Sprite crown;
+        private static Sprite arrow;
+
+        /// <summary>A gold arrow pointing RIGHT with a dark outline, 1 world unit, pivot in the centre.</summary>
+        public static Sprite Arrow
+        {
+            get
+            {
+                if (arrow != null) return arrow;
+                const int n = 32;
+                var gold = new Color32(255, 204, 51, 255);
+                var clear = new Color32(0, 0, 0, 0);
+                var pixels = new Color32[n * n];
+                for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    // Triangle: tip at the right (x = 30), base at x = 2, half height 14.
+                    float dy = Mathf.Abs(y + 0.5f - n * 0.5f);
+                    float half = 14f * (30f - x) / 28f;
+                    bool inner = x >= 5 && x <= 27 && dy <= half - 2.5f;
+                    bool outer = x >= 2 && x <= 30 && dy <= half;
+                    pixels[y * n + x] = inner ? gold : outer ? Palette.HeadOutline : clear;
+                }
+                var tex = new Texture2D(n, n, TextureFormat.RGBA32, false)
+                {
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp
+                };
+                tex.SetPixels32(pixels);
+                tex.Apply();
+                arrow = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), n);
+                arrow.name = "Arrow";
+                return arrow;
+            }
+        }
 
         /// <summary>A gold crown with a dark outline, 1 world unit wide, pivot in the centre.</summary>
         public static Sprite Crown

@@ -25,7 +25,9 @@ namespace TerritoryIO.Gameplay
 
         /// <param name="lifetime">Seconds it stays on the map.</param>
         /// <param name="blinkSeconds">It blinks during this many last seconds.</param>
-        public void Setup(PickupKind kind, Sprite sprite, Vector2 position, float worldSize, float lifetime, float blinkSeconds)
+        /// <param name="arrowSprite">Arrow shown at the screen edge (pointing right) while the pickup is off screen.</param>
+        public void Setup(PickupKind kind, Sprite sprite, Sprite arrowSprite, Vector2 position, float worldSize,
+            float lifetime, float blinkSeconds)
         {
             Kind = kind;
             Position = position;
@@ -39,10 +41,11 @@ namespace TerritoryIO.Gameplay
             body.sortingOrder = 8; // above land and trails, below heads
             transform.localScale = Vector3.one * worldSize;
 
-            // Small copy shown at the screen edge when the prize is off screen.
-            var m = new GameObject(name + "_Marker");
+            // Arrow at the screen edge pointing toward the prize while it is off screen.
+            // (An arrow, not a copy of the prize, so it never looks like the prize itself.)
+            var m = new GameObject(name + "_Arrow");
             marker = m.AddComponent<SpriteRenderer>();
-            marker.sprite = sprite;
+            marker.sprite = arrowSprite;
             marker.sortingOrder = 20;
             marker.enabled = false;
         }
@@ -76,7 +79,7 @@ namespace TerritoryIO.Gameplay
             if (body != null) UpdateMarker(body.enabled);
         }
 
-        /// <summary>Shows a small icon at the edge of the screen pointing to the pickup when it is off screen.</summary>
+        /// <summary>Shows an arrow at the edge of the screen pointing to the pickup when it is off screen.</summary>
         private void UpdateMarker(bool visible)
         {
             Camera cam = Camera.main;
@@ -90,12 +93,13 @@ namespace TerritoryIO.Gameplay
             marker.enabled = !onScreen && visible;
             if (onScreen) return;
 
-            float iconSize = halfH * 0.12f;
-            float limitX = halfW - iconSize, limitY = halfH - iconSize;
+            float iconSize = halfH * 0.09f;
+            float limitX = halfW - iconSize * 1.5f, limitY = halfH - iconSize * 1.5f;
             float k = Mathf.Min(limitX / Mathf.Max(0.001f, Mathf.Abs(d.x)), limitY / Mathf.Max(0.001f, Mathf.Abs(d.y)));
             Vector2 p = camPos + d * k;
             marker.transform.position = new Vector3(p.x, p.y, 0f);
-            marker.transform.localScale = Vector3.one * iconSize * 1.6f;
+            marker.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
+            marker.transform.localScale = Vector3.one * iconSize * (1f + 0.15f * Mathf.Sin(age * 8f));
         }
 
         private void OnDestroy()

@@ -568,7 +568,7 @@ namespace TerritoryIO.Gameplay
         {
             Vector2Int cell = FindCrownCell();
             crown = new GameObject("Crown").AddComponent<Pickup>();
-            crown.Setup(PickupKind.Crown, SpriteFactory.Crown, Player.CellCenter(cell),
+            crown.Setup(PickupKind.Crown, SpriteFactory.Crown, SpriteFactory.Arrow, Player.CellCenter(cell),
                 run.crownSize * Res, run.crownLifetime, run.crownBlinkTime);
             SetNews("A crown appeared!");
         }
@@ -594,12 +594,22 @@ namespace TerritoryIO.Gameplay
         {
             result = default;
             var enemies = new List<Player>();
+            float reach = CrownReach;
             foreach (Player q in players)
-                if (q.Alive && q != Human && Grid.Area(q.Id) > 0) enemies.Add(q);
+            {
+                if (!q.Alive || q == Human || Grid.Area(q.Id) == 0) continue;
+                if (reach > 0f && Grid.GetOwnerBounds(q.Id, out int x0, out int y0, out int x1, out int y1))
+                {
+                    // Skip enemies whose land is nowhere near you.
+                    float nx = Mathf.Clamp(Human.Position.x, x0, x1 + 1), ny = Mathf.Clamp(Human.Position.y, y0, y1 + 1);
+                    if ((new Vector2(nx, ny) - Human.Position).sqrMagnitude > reach * reach) continue;
+                }
+                enemies.Add(q);
+            }
             if (enemies.Count == 0) return false;
 
             int extra = Mathf.Max(1, Mathf.RoundToInt(run.crownEnemyDistance * Res));
-            for (int attempt = 0; attempt < 30; attempt++)
+            for (int attempt = 0; attempt < 60; attempt++)
             {
                 Player enemy = enemies[rng.Next(enemies.Count)];
                 if (!Grid.GetOwnerBounds(enemy.Id, out int minX, out int minY, out int maxX, out int maxY)) continue;
@@ -628,7 +638,7 @@ namespace TerritoryIO.Gameplay
                     if (outside >= 0 && ++outside >= extra)
                     {
                         var c = new Vector2Int(x, y);
-                        if (IsGoodCrownCell(c, enemy.Id)) { result = c; return true; }
+                        if (IsGoodCrownCell(c, enemy.Id) && InCrownReach(c)) { result = c; return true; }
                         break;
                     }
                 }
@@ -638,10 +648,12 @@ namespace TerritoryIO.Gameplay
 
         private Vector2Int FindFreeCrownCell()
         {
+            // A random spot within reach of you: first on empty land, then anywhere that isn't a trail.
+            for (int pass = 0; pass < 2; pass++)
             for (int attempt = 0; attempt < 300; attempt++)
             {
-                var c = new Vector2Int(rng.Next(1, Grid.Width - 1), rng.Next(1, Grid.Height - 1));
-                if (IsGoodCrownCell(c, -1) && Grid.GetOwner(c.x, c.y) == 0) return c;
+                Vector2Int c = RandomCellInReach();
+                if (IsGoodCrownCell(c, -1) && (pass == 1 || Grid.GetOwner(c.x, c.y) == 0)) return c;
             }
             for (int attempt = 0; attempt < 2000; attempt++)
             {
@@ -649,6 +661,26 @@ namespace TerritoryIO.Gameplay
                 if (Grid.IsPlayable(c.x, c.y)) return c;
             }
             return new Vector2Int(Grid.Width / 2, Grid.Height / 2);
+        }
+
+        /// <summary>Max distance from the human (in cells) a crown may appear at. 0 = no limit.</summary>
+        private float CrownReach => Human != null && Human.Alive && run.crownMaxDistance > 0f ? run.crownMaxDistance * Res : 0f;
+
+        private bool InCrownReach(Vector2Int c)
+        {
+            float reach = CrownReach;
+            return reach <= 0f || (Player.CellCenter(c) - Human.Position).sqrMagnitude <= reach * reach;
+        }
+
+        private Vector2Int RandomCellInReach()
+        {
+            float reach = CrownReach;
+            if (reach <= 0f) return new Vector2Int(rng.Next(1, Grid.Width - 1), rng.Next(1, Grid.Height - 1));
+            // Not right on top of you either: between 30% and 100% of the reach.
+            float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+            float r = reach * Mathf.Lerp(0.3f, 1f, (float)rng.NextDouble());
+            Vector2 p = Human.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r;
+            return new Vector2Int(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.y));
         }
 
         /// <summary>Playable, not on a trail, not on the given player's land, and not hugging a wall.</summary>
