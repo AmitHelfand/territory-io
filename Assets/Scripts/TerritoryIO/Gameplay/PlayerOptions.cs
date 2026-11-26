@@ -94,10 +94,11 @@ namespace TerritoryIO.Gameplay
             // Graphics presets: resolution (grid), land detail (pixels per cell), anti-aliasing, render scale.
             switch (graphics)
             {
-                case 1: SetGraphics(run, 3, 2, AntiAliasing.Off, 1f); break;
-                case 2: SetGraphics(run, 4, 3, AntiAliasing.X2, 1f); break;
-                case 3: SetGraphics(run, 4, 4, AntiAliasing.X4, 1f); break;
-                case 4: SetGraphics(run, 6, 4, AntiAliasing.X8, 1.5f); break;
+                // With the land shader, land detail only matters on devices that can't run it.
+                case 1: SetGraphics(run, 4, 3, AntiAliasing.Off, 1f); break;
+                case 2: SetGraphics(run, 5, 4, AntiAliasing.X2, 1f); break;
+                case 3: SetGraphics(run, 6, 6, AntiAliasing.X4, 1f); break;
+                case 4: SetGraphics(run, 8, 8, AntiAliasing.X8, 1.25f); break;
             }
 
             switch (difficulty)

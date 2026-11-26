@@ -23,9 +23,13 @@ namespace TerritoryIO.Gameplay
         public bool showStartScreen = true;
 
         [Header("Display / sharpness (applied when a game starts)")]
-        [Tooltip("LAND SHARPNESS. Texture pixels per grid cell. 1 = old soft/blurry edges, 4 = crisp smooth " +
-                 "edges (recommended), 6-8 = extra crisp on big PC screens (more memory). Needs Smooth Land Edges.")]
-        [Range(1, 8)] public int landDetail = 4;
+        [Tooltip("SMOOTH LAND SHADER (recommended). Land borders are drawn as smooth curves, anti-aliased " +
+                 "to exactly one screen pixel: no visible pixels at any zoom. Cheap, works on phones. " +
+                 "Untick only if the land looks pink/missing on some device (then Land Detail is used).")]
+        public bool landShader = true;
+        [Tooltip("Only used when Land Shader is off or not supported. Texture pixels per grid cell. " +
+                 "1 = soft/blurry edges, 4 = crisp, 6-8 = extra crisp on big PC screens (more memory).")]
+        [Range(1, 8)] public int landDetail = 6;
         [Tooltip("Anti-aliasing: smooths the jagged edges of trails and heads. X4 is a good default, Off on weak phones.")]
         public AntiAliasing antiAliasing = AntiAliasing.X4;
         [Tooltip("Render scale (URP). 1 = screen resolution. Above 1 = sharper but heavier (supersampling). " +
@@ -41,9 +45,10 @@ namespace TerritoryIO.Gameplay
                  "Bigger = longer games.")]
         public int arenaWidth = 120;
         public int arenaHeight = 120;
-        [Tooltip("SMOOTHNESS. Grid cells per world unit. 1 = old blocky look, 4 = smooth (recommended), " +
-                 "6-8 = very smooth but heavier (PC). Grid size = arena size x resolution.")]
-        [Range(1, 8)] public int resolution = 4;
+        [Tooltip("SMOOTHNESS. Grid cells per world unit: how small the steps in a land border are. " +
+                 "1 = old blocky look, 4 = OK, 6 = smooth (default), 8 = very smooth (strong PC). " +
+                 "Higher = a bit more work for bots and captures. Grid size = arena size x resolution.")]
+        [Range(1, 8)] public int resolution = 6;
         [Tooltip("Shape of the playable area. Everything outside is wall.")]
         public MapShape mapShape = MapShape.Rectangle;
         [Tooltip("Only for CustomImage: white = playable, black/transparent = wall. " +

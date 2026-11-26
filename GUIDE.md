@@ -67,17 +67,20 @@ While the game is running, look at the **Hierarchy**: you will see `Territory`, 
 ### How the arena works (the "grid")
 
 The arena is a grid of cells, like graph paper. Its size is set in **world units**
-(default 120 × 120), and **Resolution** says how many cells fit in one unit (default 4).
-So the default grid is 480 × 480 cells. More cells = smoother curves and edges.
+(default 120 × 120), and **Resolution** says how many cells fit in one unit (default 6).
+So the default grid is 720 × 720 cells. More cells = smoother curves and edges.
 Each cell remembers two numbers:
 
 - **owner** — which player's land it is (0 = nobody)
 - **trail** — which player's trail is on it (0 = none)
 
 Players move smoothly, but the rules only look at which cell the head is in.
-The picture you see is one image, coloured by the owner. With **Land Detail** 4 (default) every cell
-is drawn as 4 × 4 pixels, and each pixel takes the colour of the nearest cells, so land edges
-come out as sharp, smooth curves instead of a blur. (Land Detail 1 = the old 1 pixel per cell.)
+The land is drawn by a small **shader** (`Assets/Resources/TerritoryLand.shader`). The game keeps
+a tiny image with one pixel per cell that only says *who owns it*. For every pixel on your screen
+the shader looks at the 9 nearest cells, blends them smoothly, and draws the border between two
+owners as a smooth curve that is anti-aliased to exactly one screen pixel. So the land never shows
+pixels, at any zoom or screen size. (If a device can't run the shader, the game falls back to the
+older way: a big image with **Land Detail** pixels per cell.)
 Trails are drawn on top as smooth lines (one `LineRenderer` per player) that follow the exact path.
 
 Inside the code everything is measured in cells, so settings given in units (speed, head size,
@@ -104,7 +107,7 @@ Assets/Scripts/TerritoryIO/
 │   └─ CaptureSolver.cs   The "fill" that claims everything inside your loop.
 │
 ├─ View/                  ← what you see
-│   ├─ TerritoryRenderer.cs  Draws the arena image from the grid (sharp edges with Land Detail).
+│   ├─ TerritoryRenderer.cs  Draws the land with the smooth land shader (Assets/Resources).
 │   ├─ HudController.cs      Score, leaderboard, pause button/panel, Game Over / Victory panel.
 │   ├─ MainMenu.cs           The start screen and its Settings and High Scores pages.
 │   ├─ UiKit.cs              Helpers that build buttons, texts and panels in code.
@@ -193,31 +196,37 @@ In the GameSettings file:
 
 | Field (GameSettings) | What it does | Try |
 |---|---|---|
-| **Land Detail** | Pixels per cell for the land picture. Biggest effect on blurry edges | 4 (default), 6–8 on PC |
+| **Land Shader** | Smooth, pixel-free land borders drawn by the shader. Cheap, also on phones | On (default) |
+| **Resolution** | Grid cells per unit: how small the "steps" in a land border are | 6 (default), 8 on a strong PC, 4 on a slow phone |
 | **Anti Aliasing** | Smooths jagged edges of trails and heads | X4 (default), X8 on PC, Off on old phones |
 | **Render Scale** | Renders the whole screen bigger, then shrinks it (supersampling) | 1 (default), 1.5 on PC = very sharp |
 | **Native Resolution On Mobile** | Phones often render below the screen's real resolution. This forces full resolution | On |
 | **Target Frame Rate** | Phones default to 30 fps, which looks choppy | 60 |
-| **Resolution** | Grid cells per unit: how fine the *gameplay* grid is (smaller "steps" in land) | 4 (default), 6 on PC |
-| Smooth Land Edges | Must be ticked for Land Detail to work. Untick = blocky pixel look | On |
+| Land Detail | Only used if Land Shader is off or not supported: pixels per cell of the land picture | 6 |
+| Smooth Land Edges | Must be ticked for smooth land. Untick = blocky pixel look | On |
 | Smooth Trails / Trail Width | Trails as smooth lines, and their thickness | On / 0.6 |
 
 The in-game **Settings → Graphics** presets set these for you:
 
 | Preset | Resolution | Land Detail | Anti Aliasing | Render Scale |
 |---|---|---|---|---|
-| Low | 3 | 2 | Off | 1 |
-| Medium | 4 | 3 | X2 | 1 |
-| High | 4 | 4 | X4 | 1 |
-| Ultra | 6 | 4 | X8 | 1.5 |
+| Low | 4 | 3 | Off | 1 |
+| Medium | 5 | 4 | X2 | 1 |
+| High | 6 | 6 | X4 | 1 |
+| Ultra | 8 | 8 | X8 | 1.25 |
+
+("Default" uses the GameSettings values: Resolution 6, Land Shader on, X4, Render Scale 1.)
 
 Change the presets in code: `Gameplay/PlayerOptions.cs`, search for `SetGraphics(run,`.
 The numbers are `(resolution, landDetail, antiAliasing, renderScale)`.
 
-Costs: Resolution multiplies the number of cells by Resolution², and Land Detail multiplies the
-picture's memory by Land Detail². The game automatically lowers Land Detail if the picture would
-be bigger than 2048 pixels on phones or 4096 on PC (code: `View/TerritoryRenderer.cs`, search `maxTex`).
-On phones keep Resolution 4 and Land Detail 4 or less, with the arena at about 120 × 120.
+Costs: Resolution multiplies the number of cells by Resolution² (more work for bots and captures).
+The land shader costs almost nothing extra: its image is only 1 pixel per cell.
+**If the game is slow on your phone:** pick Graphics **Medium** in the game's Settings (or set
+Resolution to 4 / 5 and Anti Aliasing to X2 in GameSettings). Render Scale above 1 is the most
+expensive setting, so keep it at 1 on phones.
+(Land Detail only matters for the fallback: the game lowers it automatically if the picture would
+be bigger than 2048 pixels on phones or 4096 on PC; code: `View/TerritoryRenderer.cs`, search `maxTex`.)
 
 **Unity settings outside the code** (only if you still want more):
 1. **Game view** (Editor only): at the top of the Game tab, set the size to *Full HD (1920×1080)*
@@ -228,6 +237,7 @@ On phones keep Resolution 4 and Land Detail 4 or less, with the arena at about 1
 3. **Player Settings → Android → Resolution and Presentation → Resolution Scaling Mode**:
    set to *Disabled* (or tick Native Resolution On Mobile, which does it from code).
 4. **Your own images** (head sprites): click the PNG → Inspector → *Filter Mode: Bilinear*,
+   *Generate Mip Maps* ticked (Advanced),
    *Compression: None* (or High Quality), *Max Size* at least the image size → Apply.
    Draw them at least 256 × 256 pixels.
 
