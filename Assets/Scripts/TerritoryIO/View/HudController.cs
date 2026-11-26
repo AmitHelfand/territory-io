@@ -17,6 +17,8 @@ namespace TerritoryIO.View
         private GameObject pauseButton;
         private Text scoreText;
         private Text boardText;
+        private Text crownText;
+        private Text newsText;
         private GameObject panel;
         private Text panelTitle;
         private Text panelBody;
@@ -40,6 +42,13 @@ namespace TerritoryIO.View
 
             boardText = MakeText(transform, "Leaderboard", 30, TextAnchor.UpperRight,
                 new Vector2(1f, 1f), new Vector2(-30f, -24f), new Vector2(500, 400));
+
+            // Crown mode timer (under the score) and a short news line (top centre).
+            crownText = MakeText(transform, "CrownTimer", 34, TextAnchor.UpperLeft,
+                new Vector2(0f, 1f), new Vector2(30f, -140f), new Vector2(800, 100));
+            newsText = MakeText(transform, "News", 34, TextAnchor.UpperCenter,
+                new Vector2(0.5f, 1f), new Vector2(0f, -190f), new Vector2(1000, 60));
+            newsText.color = new Color(1f, 0.84f, 0.29f);
 
             // Pause button (top centre, under the title). Esc / Android Back also pauses.
             pauseButton = UiKit.Button(transform, "II", new Vector2(0f, -100f), new Vector2(110, 80),
@@ -106,6 +115,13 @@ namespace TerritoryIO.View
             if (!humanShown && human.Alive)
                 AppendRow(sorted.IndexOf(human) + 1, human);
             boardText.text = sb.ToString();
+
+            crownText.text = human.Alive && human.HasCrown
+                ? $"<color=#FFD54A><b>CROWN {Mathf.CeilToInt(human.CrownTimeLeft)}s</b></color>\n" +
+                  "<size=24>Kill an enemy to take ALL their land!</size>"
+                : "";
+            bool showNews = playing && !string.IsNullOrEmpty(game.News) && game.RoundTime - game.NewsTime < 2.5f;
+            newsText.text = showNews ? $"<b>{game.News}</b>" : "";
 
             bool ended = game.State != GameState.Playing;
             panel.SetActive(ended);

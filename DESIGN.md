@@ -297,3 +297,17 @@ angle offset.
 - `View/DisplaySetup.cs`: MSAA (URP asset `msaaSampleCount`, or QualitySettings for built-in),
   URP `renderScale`, native screen resolution on phones, `Application.targetFrameRate`.
   Original URP values are restored when GameManager is destroyed (stop Play).
+
+## v0.5 changes (2026-11-26): crown power-up (first prize)
+
+- **Pickup** (`Gameplay/Pickup.cs`): a small reusable "prize on the map" object (kind, position, lifetime,
+  bob/pulse, blinking at the end, edge-of-screen marker when off screen). `PickupKind` lists the prize types;
+  GameManager owns the rules (where it spawns, who can grab it, what it does). Future prizes reuse it.
+- **Crown rules** (GameManager "crown power-up" section):
+  - One crown every `crownInterval` (30 s) of play; it stays `crownLifetime` (10 s), blinks the last `crownBlinkTime` (3 s).
+  - Spawn spot: chance of "just outside an enemy's land" grows from 0 at round start to 100% at
+    `crownNearEnemyAfter` (120 s); otherwise a random free spot away from walls.
+  - Grab it (head within `crownPickupRadius`) → `crownDuration` (10 s) of crown mode, shown above the head and in the HUD.
+  - Any kill during crown mode transfers the victim's whole land to the killer (`GridMap.TransferOwner`) instead of
+    clearing it; can trigger victory. Crown mode ends on death or round restart.
+  - Human only by default; `botsCanGrabCrown` lets bots grab it too (they don't steer toward it yet).

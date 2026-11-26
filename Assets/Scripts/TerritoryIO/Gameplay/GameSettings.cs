@@ -111,6 +111,29 @@ namespace TerritoryIO.Gameplay
         [Header("Rules")]
         [Range(5f, 100f)] public float winPercent = 50f;
 
+        [Header("Crown power-up")]
+        [Tooltip("Crowns appear on the map. Grab one, then every enemy you kill gives you ALL of their land.")]
+        public bool enableCrown = true;
+        [Tooltip("(live) Seconds between crowns. The first one appears this long after the round starts.")]
+        [Range(5f, 120f)] public float crownInterval = 30f;
+        [Tooltip("(live) Seconds a crown stays on the map before it disappears.")]
+        [Range(3f, 30f)] public float crownLifetime = 10f;
+        [Tooltip("(live) The crown blinks during its last this-many seconds.")]
+        [Range(0f, 10f)] public float crownBlinkTime = 3f;
+        [Tooltip("(live) Seconds of crown mode after you grab it: kill enemies in this time to take their land.")]
+        [Range(3f, 30f)] public float crownDuration = 10f;
+        [Tooltip("(live) Seconds into the round until crowns ALWAYS appear right next to an enemy's land. " +
+                 "Before that the chance grows slowly from 0 (random spots at the start). 0 = always next to an enemy.")]
+        [Range(0f, 600f)] public float crownNearEnemyAfter = 120f;
+        [Tooltip("How far outside the enemy's border the crown appears, in units.")]
+        [Range(0.5f, 10f)] public float crownEnemyDistance = 2f;
+        [Tooltip("Crown size on the map, in units.")]
+        [Range(1f, 6f)] public float crownSize = 2.5f;
+        [Tooltip("How close (units) your head must get to grab it.")]
+        [Range(0.5f, 4f)] public float crownPickupRadius = 1.5f;
+        [Tooltip("Bots can grab crowns too (and steal land with them).")]
+        public bool botsCanGrabCrown = false;
+
         [Header("Camera")]
         [Tooltip("(live) Bigger = zoomed out.")]
         [Range(5f, 60f)] public float cameraSize = 16f;
@@ -128,6 +151,11 @@ namespace TerritoryIO.Gameplay
             botTurnRate = src.botTurnRate;
             cameraSize = src.cameraSize;
             respawnDelay = src.respawnDelay;
+            crownInterval = src.crownInterval;
+            crownLifetime = src.crownLifetime;
+            crownBlinkTime = src.crownBlinkTime;
+            crownDuration = src.crownDuration;
+            crownNearEnemyAfter = src.crownNearEnemyAfter;
         }
     }
 }

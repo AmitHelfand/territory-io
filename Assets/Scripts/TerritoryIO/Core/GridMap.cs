@@ -94,6 +94,19 @@ namespace TerritoryIO.Core
             return cleared;
         }
 
+        /// <summary>Gives all land of one player to another (crown power-up). Returns cells moved.</summary>
+        public int TransferOwner(int fromId, int toId)
+        {
+            int moved = 0;
+            for (int i = 0; i < owner.Length; i++)
+            {
+                if (owner[i] != fromId) continue;
+                SetOwner(i % Width, i / Width, toId);
+                moved++;
+            }
+            return moved;
+        }
+
         public void ClearAll()
         {
             for (int y = 0; y < Height; y++)
