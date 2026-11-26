@@ -16,6 +16,8 @@ namespace TerritoryIO.Gameplay
         public Vector2 Position { get; private set; }
         /// <summary>Seconds until it disappears.</summary>
         public float TimeLeft { get; private set; }
+        /// <summary>False during the "off" moments of its blinking (the minimap blinks with it).</summary>
+        public bool Visible => body == null || body.enabled;
 
         private float blinkTime;
         private float size;

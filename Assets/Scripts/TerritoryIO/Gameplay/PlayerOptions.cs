@@ -16,6 +16,7 @@ namespace TerritoryIO.Gameplay
         public static readonly string[] DifficultyNames = { "Default", "Easy", "Normal", "Hard" };
         public static readonly string[] GraphicsNames = { "Default", "Low", "Medium", "High", "Ultra" };
         public static readonly string[] ControlNames = { "Joystick", "Point to finger" };
+        public static readonly string[] MinimapNames = { "Default", "On", "Off" };
 
         public string playerName = "You";
         public int botCount = 9;
@@ -25,6 +26,8 @@ namespace TerritoryIO.Gameplay
         public int graphics;
         public int controls;
         public int mapShape;
+        /// <summary>Index into MinimapNames. 0 = use GameSettings > Show Minimap.</summary>
+        public int minimap;
 
         public static PlayerOptions Load(GameSettings defaults)
         {
@@ -50,7 +53,8 @@ namespace TerritoryIO.Gameplay
                 difficulty = 0,
                 graphics = 0,
                 controls = (int)s.controlScheme,
-                mapShape = (int)s.mapShape
+                mapShape = (int)s.mapShape,
+                minimap = 0
             }.Clamped();
         }
 
@@ -75,6 +79,7 @@ namespace TerritoryIO.Gameplay
             graphics = Mathf.Clamp(graphics, 0, GraphicsNames.Length - 1);
             controls = Mathf.Clamp(controls, 0, ControlNames.Length - 1);
             mapShape = Mathf.Clamp(mapShape, 0, Enum.GetValues(typeof(MapShape)).Length - 1);
+            minimap = Mathf.Clamp(minimap, 0, MinimapNames.Length - 1);
             return this;
         }
 

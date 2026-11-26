@@ -54,6 +54,8 @@ namespace TerritoryIO.Gameplay
         private readonly CaptureSolver solver = new CaptureSolver();
         private GameSettings run;
         private float botSpeedFactor = 1f;
+        /// <summary>Start screen's Minimap choice: 0 = follow GameSettings, 1 = on, 2 = off.</summary>
+        private int minimapChoice;
         private TerritoryRenderer territory;
         private HudController hud;
         private MainMenu menu;
@@ -127,8 +129,10 @@ namespace TerritoryIO.Gameplay
             // Work on a copy so nothing here changes your GameSettings file.
             run = Instantiate(settings);
             run.name = settings.name + " (running)";
-            botSpeedFactor = useMenuOptions ? PlayerOptions.Load(settings).ApplyTo(run) : 1f;
-            run.CopyLiveFrom(settings, botSpeedFactor);
+            PlayerOptions menuOptions = useMenuOptions ? PlayerOptions.Load(settings) : null;
+            botSpeedFactor = menuOptions != null ? menuOptions.ApplyTo(run) : 1f;
+            minimapChoice = menuOptions != null ? menuOptions.minimap : 0;
+            CopyLiveSettings();
 
             rng = run.seed == 0 ? new System.Random() : new System.Random(run.seed);
 
@@ -154,6 +158,13 @@ namespace TerritoryIO.Gameplay
 
             InGame = true;
             StartRound();
+        }
+
+        /// <summary>Copies the (live) GameSettings fields into the running copy, keeping the start screen's choices.</summary>
+        private void CopyLiveSettings()
+        {
+            run.CopyLiveFrom(settings, botSpeedFactor);
+            if (minimapChoice != 0) run.showMinimap = minimapChoice == 1;
         }
 
         /// <summary>Destroys everything BuildWorld created.</summary>
@@ -337,7 +348,7 @@ namespace TerritoryIO.Gameplay
             }
             if (Paused) return;
 
-            run.CopyLiveFrom(settings, botSpeedFactor); // (live) fields follow your GameSettings file
+            CopyLiveSettings(); // (live) fields follow your GameSettings file
             cam.orthographicSize = run.cameraSize * Res;
 
             if (State != GameState.Victory)

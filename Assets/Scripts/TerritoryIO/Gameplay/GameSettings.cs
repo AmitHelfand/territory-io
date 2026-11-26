@@ -7,6 +7,7 @@ namespace TerritoryIO.Gameplay
     public enum ControlScheme { FloatingJoystick, PointTowardFinger }
     public enum ExpansionStyle { Random, TowardCenter, AwayFromCenter, TowardPlayer, AwayFromOthers }
     public enum AntiAliasing { Off = 1, X2 = 2, X4 = 4, X8 = 8 }
+    public enum ScreenCorner { TopRight, TopLeft, BottomRight, BottomLeft }
 
     /// <summary>
     /// Every tunable value of the game in one asset.
@@ -142,6 +143,24 @@ namespace TerritoryIO.Gameplay
         [Tooltip("Bots can grab crowns too (and steal land with them).")]
         public bool botsCanGrabCrown = false;
 
+        [Header("Minimap")]
+        [Tooltip("(live) Small map of the whole arena in a corner: everyone's land, a dot for every player " +
+                 "(yours is the big one with the white ring) and the crown.")]
+        public bool showMinimap = true;
+        [Tooltip("(live) Minimap size in screen pixels on a 1920x1080 screen (it scales with the screen).")]
+        [Range(120f, 600f)] public float minimapSize = 260f;
+        [Tooltip("(live) Which corner. Top corners sit under the score / leaderboard. " +
+                 "Bottom corners are where thumbs usually are on a phone.")]
+        public ScreenCorner minimapCorner = ScreenCorner.TopRight;
+        [Tooltip("(live) 0 = invisible, 1 = solid.")]
+        [Range(0.2f, 1f)] public float minimapOpacity = 0.85f;
+        [Tooltip("(live) How many times per second the land on the minimap is redrawn. " +
+                 "The dots move smoothly every frame anyway. Lower = cheaper on phones.")]
+        [Range(1f, 15f)] public float minimapUpdatesPerSecond = 5f;
+        [Tooltip("Sharpness of the minimap land, in pixels across (applied when a game starts). " +
+                 "128 is plenty on phones; higher costs a bit more each update.")]
+        [Range(64, 512)] public int minimapDetail = 160;
+
         [Header("Camera")]
         [Tooltip("(live) Bigger = zoomed out.")]
         [Range(5f, 60f)] public float cameraSize = 16f;
@@ -164,6 +183,11 @@ namespace TerritoryIO.Gameplay
             crownBlinkTime = src.crownBlinkTime;
             crownDuration = src.crownDuration;
             crownNearEnemyAfter = src.crownNearEnemyAfter;
+            showMinimap = src.showMinimap;
+            minimapSize = src.minimapSize;
+            minimapCorner = src.minimapCorner;
+            minimapOpacity = src.minimapOpacity;
+            minimapUpdatesPerSecond = src.minimapUpdatesPerSecond;
         }
     }
 }

@@ -8,7 +8,7 @@ namespace TerritoryIO.View
 {
     /// <summary>
     /// HUD built entirely in code (no prefabs): your score, a leaderboard, a pause button,
-    /// the pause panel and the game-over / victory panel. Uses uGUI with Unity's built-in font.
+    /// the pause panel, the game-over / victory panel and the minimap. Uses uGUI with Unity's built-in font.
     /// </summary>
     public class HudController : MonoBehaviour
     {
@@ -76,6 +76,12 @@ namespace TerritoryIO.View
             UiKit.Button(panel.transform, "MENU", new Vector2(200f, -170f), new Vector2(360, 96),
                 () => game.ShowMenu(), 40);
             panel.SetActive(false);
+
+            // Minimap of the whole arena (top right, under the leaderboard by default).
+            new GameObject("Minimap", typeof(RectTransform)).AddComponent<Minimap>().Init(game, transform);
+            // Panels must stay on top of the minimap.
+            pausePanel.transform.SetAsLastSibling();
+            panel.transform.SetAsLastSibling();
         }
 
         private Text MakeText(Transform parent, string name, int size, TextAnchor align,

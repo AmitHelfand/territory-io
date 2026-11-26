@@ -111,7 +111,7 @@ namespace TerritoryIO.View
                 new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(1000, 90));
 
             float y = 290f;
-            const float step = 100f;
+            const float step = 88f;
 
             Label(t, "Name", y);
             nameField = UiKit.InputField(t, options.playerName, new Vector2(170f, y), new Vector2(560, 80), 38, 16,
@@ -137,6 +137,10 @@ namespace TerritoryIO.View
 
             Stepper(t, "Controls", y, () => PlayerOptions.ControlNames[options.controls],
                 d => options.controls = Wrap(options.controls + d, PlayerOptions.ControlNames.Length));
+            y -= step;
+
+            Stepper(t, "Minimap", y, () => PlayerOptions.MinimapNames[options.minimap],
+                d => options.minimap = Wrap(options.minimap + d, PlayerOptions.MinimapNames.Length));
 
             UiKit.Text(t, "Hint", "\"Default\" uses the values from your GameSettings file.", 26,
                 TextAnchor.MiddleCenter, new Vector2(0.5f, 0f), new Vector2(0f, 175f), new Vector2(1100, 40))

@@ -311,3 +311,16 @@ angle offset.
   - Any kill during crown mode transfers the victim's whole land to the killer (`GridMap.TransferOwner`) instead of
     clearing it; can trigger victory. Crown mode ends on death or round restart.
   - Human only by default; `botsCanGrabCrown` lets bots grab it too (they don't steer toward it yet).
+
+## v0.7 changes (2026-11-26): live minimap
+
+- `View/Minimap.cs`, created by HudController inside the HUD canvas (top right under the leaderboard by default).
+- Land + trails: one RGBA32 texture of at most `minimapDetail` (160) texels on the long side, each texel = the
+  owner of the centre cell of its block; trail cells of every player are painted on top so thin trails show.
+  Redrawn `minimapUpdatesPerSecond` (5) times a second, skipped while paused. No second camera.
+- Player dots (colour + dark outline), your dot bigger with a pulsing white ring, a small crown over a crown
+  holder, and the crown on the map (blinks with `Pickup.Visible`): UI images moved every frame.
+- All images have `raycastTarget = false`, so the minimap never blocks touches or the floating joystick.
+- Settings (section Minimap): `showMinimap`, `minimapSize`, `minimapCorner`, `minimapOpacity`,
+  `minimapUpdatesPerSecond` are live; `minimapDetail` applies at Play. Start screen Settings has
+  Minimap Default/On/Off (`PlayerOptions.minimap`), which overrides `showMinimap`.
