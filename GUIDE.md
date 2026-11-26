@@ -1,10 +1,11 @@
 # Territory.io — Beginner's Guide
 
-This guide explains how the project works and how to change it. It has three parts:
+This guide explains how the project works and how to change it. It has four parts:
 
 1. **How the game is built** — what happens when you press Play, and what each file does.
 2. **Changing parameters in the Inspector** — no code, the easy way.
 3. **Changing things in code** — for values that are not in the Inspector, with examples.
+4. **Working with Git** — how updates arrive, and how to save your own changes to GitHub.
 
 ---
 
@@ -366,6 +367,52 @@ This is the general pattern: **add a field in GameSettings.cs, then read it with
 
 ---
 
+## Part 4 — Working with Git (GitHub Desktop)
+
+The whole Unity project lives on GitHub: https://github.com/AmitHelfand/territory-io.
+The folder on your PC (`Documents\GitHub\territory-io`) is a copy of it. GitHub Desktop keeps the two in sync.
+
+### Git words you need
+| Word | Meaning |
+|---|---|
+| **Repository (repo)** | The project folder that Git keeps track of |
+| **Commit** | A saved snapshot of your changes, with a short description |
+| **Push** | Send your commits from your PC up to GitHub |
+| **Pull** | Bring new commits from GitHub down to your PC |
+| **Branch** | A separate line of work. `main` is the real game; Claude works on a side branch |
+| **Pull request (PR)** | A proposal to bring a branch's changes into `main`. You read it and click Merge |
+
+### Getting a new version from Claude
+1. Claude sends you a pull request link. Open it. The **Files changed** tab shows every line that changes
+   (green = added, red = removed).
+2. Click **Merge pull request** → **Confirm merge**. Now `main` on GitHub has the change.
+3. In Unity, save your scene (Ctrl+S).
+4. In GitHub Desktop: **Fetch origin**, then **Pull origin**.
+5. Back in Unity, wait for it to compile, then press Play.
+
+If you don't like the change, don't merge it. Just tell Claude what to change, and the same pull request is updated.
+
+### Saving your own changes
+Whenever you change something in Unity (move an object in the scene, edit GameSettings, add an image):
+1. Save in Unity (Ctrl+S).
+2. GitHub Desktop → **Changes** tab lists the changed files.
+3. Type a short **Summary** (for example "Faster bots"), click **Commit to main**, then **Push origin**.
+
+Do this before you merge a pull request, so your work and Claude's don't collide.
+
+### Which files go into Git
+- Yes: `Assets` (including every `.meta` file), `Packages`, `ProjectSettings`.
+- No: `Library`, `Temp`, `Logs`, `UserSettings`, `Build`. Unity rebuilds these, and `.gitignore` keeps them out.
+- `.meta` files are Unity's ID cards for each asset. Always commit them together with their file,
+  or the scene loses its links to scripts and images.
+
+### Undoing things
+- Undo a change you haven't committed yet: GitHub Desktop → **Changes** → right-click the file → **Discard changes**.
+- Undo a commit: **History** tab → right-click the commit → **Revert changes in commit**, then **Push origin**.
+- Older versions are never lost. The **History** tab shows every commit.
+
+---
+
 ## If something goes wrong
 
 | Problem | Fix |
@@ -383,3 +430,6 @@ This is the general pattern: **add a field in GameSettings.cs, then read it with
 | Want to erase the high scores | HIGH SCORES → CLEAR (tap twice) |
 | My image faces the wrong way | Change **Sprite Angle Offset** (-90, 90 or 180) |
 | Settings changed by themselves | You edited them during Play mode. Settings files keep Play-mode changes |
+| GitHub Desktop says "newer commits on remote" when pushing | Click **Pull origin** first, then **Push origin** |
+| GitHub Desktop shows a "conflict" | Don't guess. Click **Abort merge** if it's offered, and send Claude a screenshot |
+| Script is missing on an object after pulling | A `.meta` file was not committed. Tell Claude which object shows "Missing script" |

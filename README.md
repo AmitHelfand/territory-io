@@ -6,8 +6,25 @@ and don't let anyone touch your trail. Single player against bots, PC and Androi
 - Design schematic: [DESIGN.md](DESIGN.md) (v0.2, v0.3 and v0.4 changes at the bottom)
 - Beginner's guide: [GUIDE.md](GUIDE.md)
 - Code: `Assets/Scripts/TerritoryIO/` (20 C# files)
+- This folder is the whole Unity project (Unity 6000.0.61f1), kept on GitHub:
+  https://github.com/AmitHelfand/territory-io
 
-## Update to v0.4 (start screen + sharper picture)
+## Getting updates (Git)
+
+Updates now come through GitHub instead of zip files. Each change arrives as a **pull request**.
+
+1. Open the pull request link on GitHub, read what it changes, and click **Merge pull request** → **Confirm merge**.
+2. Save your scene in Unity (Ctrl+S).
+3. In GitHub Desktop click **Fetch origin**, then **Pull origin**.
+4. Go back to Unity and wait for it to compile. Any extra steps are written in the pull request.
+
+After you change something yourself in Unity (a scene, settings, a new image), save it, then in
+GitHub Desktop type a short Summary, click **Commit to main**, then **Push origin**.
+GUIDE.md → "Part 4 — Working with Git" has the details.
+
+The update steps below are from the zip days and are kept for history only.
+
+## Update to v0.4 (start screen + sharper picture) — old zip steps
 
 1. Stop Play mode. Extract `TerritoryIO_Scripts.zip` into `Assets` and choose **Replace the files**.
    Five files are new (`MainMenu.cs`, `UiKit.cs`, `DisplaySetup.cs`, `PlayerOptions.cs`, `HighScores.cs`).
@@ -20,7 +37,7 @@ and don't let anyone touch your trail. Single player against bots, PC and Androi
 
 Where to change the sharpness: GUIDE.md → "Sharpness and resolution: where to change it".
 
-## Update to v0.3 (smooth resolution)
+## Update to v0.3 (smooth resolution) — old zip steps
 
 1. Stop Play mode. Extract `TerritoryIO_Scripts.zip` into `Assets` and choose **Replace the files**.
 2. Click your `GameSettings` file. New fields: **Resolution** (smoothness, default 4),
@@ -28,7 +45,7 @@ Where to change the sharpness: GUIDE.md → "Sharpness and resolution: where to 
 3. Tick **Smooth Land Edges** (your existing file still has it off).
 4. Press Play.
 
-## Update from v0.1 to v0.2
+## Update from v0.1 to v0.2 — old zip steps
 
 1. Close Play mode in Unity.
 2. Extract `TerritoryIO_Scripts.zip` into your project's `Assets` folder again, and choose
@@ -110,18 +127,19 @@ Arena settings apply when you press Play.
 **Control Scheme** in settings: *FloatingJoystick* (default, drag from where you touch) or
 *PointTowardFinger* (the head turns toward your finger or cursor while pressed).
 
-## First-time setup (new project)
+## First-time setup (new computer)
 
-1. Unity Hub → New project → Universal 2D (Unity 2022.3 LTS or Unity 6).
-2. Extract the zip into the project's `Assets` folder.
-3. Create an empty GameObject named `Game`, add the `GameManager` component.
-4. Do steps 4–6 of the update section above, then press Play.
+1. Install GitHub Desktop and sign in. **File → Clone repository** → `territory-io` → **Clone**.
+2. Unity Hub → **Add → Add project from disk** → choose the cloned `territory-io` folder.
+   Open it with Unity 6000.0.61f1 (Unity Hub offers to install it if it's missing).
+3. Open `Assets/Scenes/SampleScene` and press Play. The scene and settings are already in Git.
 
 ## Building for Android
 File → Build Settings → Android → Switch Platform → Add Open Scenes → Build.
 Player Settings → Resolution and Presentation → Landscape.
 
 ## Status
+- 2026-11-26: the project moved to Git. All changes now come as pull requests.
 - v0.4 (start screen, high scores, pause, sharper land, anti-aliasing) compiles against Unity API
   stubs with both input systems; not yet run in the Unity editor. Send any Console errors.
 - Compiled against Unity API stubs with both input systems; the capture algorithm is unit tested.
