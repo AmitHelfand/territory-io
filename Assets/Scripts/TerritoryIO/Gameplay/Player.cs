@@ -30,6 +30,10 @@ namespace TerritoryIO.Gameplay
         public bool Alive { get; private set; }
         public int Kills;
         public float BestPercent;
+        /// <summary>Seconds of crown mode left (0 = no crown). Kills during crown mode take the victim's land.</summary>
+        public float CrownTimeLeft { get; private set; }
+        public bool HasCrown => CrownTimeLeft > 0f;
+        private SpriteRenderer crownIcon;
 
         private Transform visual;
         private LineRenderer trailLine;
@@ -146,6 +150,7 @@ namespace TerritoryIO.Gameplay
             ClearTrail();
             Kills = 0;
             BestPercent = 0f;
+            SetCrown(0f);
             Alive = true;
             gameObject.SetActive(true);
             Brain.OnSpawn(this);
@@ -156,7 +161,34 @@ namespace TerritoryIO.Gameplay
         {
             Alive = false;
             ClearTrail();
+            SetCrown(0f);
             gameObject.SetActive(false);
+        }
+
+        /// <summary>Starts (seconds &gt; 0) or ends (0) crown mode and shows a small crown above the head.</summary>
+        public void SetCrown(float seconds)
+        {
+            CrownTimeLeft = Mathf.Max(0f, seconds);
+            if (HasCrown && crownIcon == null)
+            {
+                var go = new GameObject("CrownIcon");
+                go.transform.SetParent(transform, false); // not under Visual, so it never rotates
+                crownIcon = go.AddComponent<SpriteRenderer>();
+                crownIcon.sprite = SpriteFactory.Crown;
+                crownIcon.sortingOrder = 12;
+            }
+            if (crownIcon != null) crownIcon.enabled = HasCrown;
+        }
+
+        /// <summary>Counts crown mode down. The icon blinks during the last 2 seconds.</summary>
+        public void TickCrown(float dt, float headSize)
+        {
+            if (!HasCrown) return;
+            CrownTimeLeft = Mathf.Max(0f, CrownTimeLeft - dt);
+            if (!HasCrown) { SetCrown(0f); return; }
+            crownIcon.transform.localScale = Vector3.one * headSize;
+            crownIcon.transform.localPosition = new Vector3(0f, headSize * 1.05f, 0f);
+            crownIcon.enabled = CrownTimeLeft > 2f || Mathf.Repeat(CrownTimeLeft, 0.3f) > 0.12f;
         }
 
         /// <summary>Turn toward desired direction, limited by TurnRate.</summary>

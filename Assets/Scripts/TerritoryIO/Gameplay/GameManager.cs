@@ -35,6 +35,13 @@ namespace TerritoryIO.Gameplay
         public bool Paused { get; private set; }
         /// <summary>True while a game is built (false on the start screen).</summary>
         public bool InGame { get; private set; }
+        /// <summary>Seconds played in this round (stops while paused).</summary>
+        public float RoundTime { get; private set; }
+        /// <summary>The crown lying on the map, or null.</summary>
+        public Pickup Crown => crown;
+        /// <summary>Short news line for the HUD (crown appeared, land stolen...) and when it was set (RoundTime).</summary>
+        public string News { get; private set; }
+        public float NewsTime { get; private set; }
 
         /// <summary>Grid cells per world unit (GameSettings.resolution). All "units" settings are multiplied by it.</summary>
         public int Res { get; private set; } = 1;
@@ -54,6 +61,8 @@ namespace TerritoryIO.Gameplay
         private Camera cam;
         private System.Random rng;
         private float endTime;
+        private Pickup crown;
+        private float nextCrownTime;
 
         private static readonly string[] BotNames =
         {
@@ -163,6 +172,7 @@ namespace TerritoryIO.Gameplay
             territory = null;
             hud = null;
             Grid = null;
+            RemoveCrown();
             if (cameraFollow != null) cameraFollow.Target = null;
             if (run != null) Destroy(run);
             run = null;
@@ -233,6 +243,10 @@ namespace TerritoryIO.Gameplay
             StopAllCoroutines();
             foreach (Player p in players) p.Die();
             Grid.ClearAll();
+            RemoveCrown();
+            RoundTime = 0f;
+            nextCrownTime = run.crownInterval;
+            News = null;
             foreach (Player p in players) SpawnPlayer(p);
 
             State = GameState.Playing;
@@ -340,6 +354,8 @@ namespace TerritoryIO.Gameplay
                 foreach (Player p in players)
                     if (p.Alive) p.UpdateVisual();
 
+                if (State == GameState.Playing) UpdateCrown(dt);
+
                 if (Human.Alive)
                     Human.BestPercent = Mathf.Max(Human.BestPercent, Grid.AreaPercent(Human.Id));
             }
@@ -445,7 +461,12 @@ namespace TerritoryIO.Gameplay
                 if (q != p && q.Alive && Grid.Area(q.Id) == 0)
                     Kill(q, p, $"{p.DisplayName} took all your land");
 
-            if (p == Human && State == GameState.Playing && Grid.AreaPercent(p.Id) >= run.winPercent)
+            CheckVictory(p);
+        }
+
+        private void CheckVictory(Player p)
+        {
+            if (p == Human && p.Alive && State == GameState.Playing && Grid.AreaPercent(p.Id) >= run.winPercent)
                 EndRound(GameState.Victory, $"You own {run.winPercent:0}% of the arena!", Grid.AreaPercent(p.Id));
         }
 
@@ -456,10 +477,20 @@ namespace TerritoryIO.Gameplay
             float percent = Grid.AreaPercent(victim.Id);
             foreach (Vector2Int c in victim.Trail)
                 if (Grid.GetTrail(c.x, c.y) == victim.Id) Grid.SetTrail(c.x, c.y, 0);
-            Grid.ClearOwner(victim.Id);
+
+            // Crown mode: the killer gets ALL of the victim's land instead of it turning neutral.
+            bool steal = killer != null && killer != victim && killer.Alive && killer.HasCrown;
+            int stolen = steal ? Grid.TransferOwner(victim.Id, killer.Id) : Grid.ClearOwner(victim.Id);
             victim.Die();
 
             if (killer != null && killer != victim) killer.Kills++;
+            if (steal && stolen > 0)
+            {
+                SetNews(killer == Human ? $"You took {victim.DisplayName}'s land!"
+                    : victim == Human ? $"{killer.DisplayName} took your land with the crown!"
+                    : $"{killer.DisplayName} took {victim.DisplayName}'s land!");
+                CheckVictory(killer);
+            }
 
             if (victim == Human)
             {
@@ -480,6 +511,154 @@ namespace TerritoryIO.Gameplay
             EndPercent = percent;
             endTime = Time.unscaledTime;
             EndRank = HighScores.Add(Human.DisplayName, percent, Human.Kills, state == GameState.Victory);
+        }
+
+        // ------------------------------------------------------------------ crown power-up
+
+        private void SetNews(string text)
+        {
+            News = text;
+            NewsTime = RoundTime;
+        }
+
+        /// <summary>Runs the crown: counts down crown mode, spawns, expires and hands out crowns.</summary>
+        private void UpdateCrown(float dt)
+        {
+            RoundTime += dt;
+            float headSize = run.headSize * Res;
+            foreach (Player p in players)
+                if (p.Alive) p.TickCrown(dt, headSize);
+
+            if (!run.enableCrown)
+            {
+                RemoveCrown();
+                return;
+            }
+
+            if (crown == null)
+            {
+                if (RoundTime >= nextCrownTime)
+                {
+                    SpawnCrown();
+                    nextCrownTime = RoundTime + Mathf.Max(1f, run.crownInterval);
+                }
+                return;
+            }
+
+            if (!crown.Tick(dt))
+            {
+                RemoveCrown();
+                return;
+            }
+
+            float r = run.crownPickupRadius * Res;
+            foreach (Player p in players)
+            {
+                if (!p.Alive || !(p.IsHuman || run.botsCanGrabCrown)) continue;
+                if ((p.Position - crown.Position).sqrMagnitude > r * r) continue;
+                p.SetCrown(run.crownDuration);
+                SetNews(p == Human ? "CROWN! Kill enemies now to take ALL their land!"
+                    : $"{p.DisplayName} grabbed the crown!");
+                RemoveCrown();
+                return;
+            }
+        }
+
+        private void SpawnCrown()
+        {
+            Vector2Int cell = FindCrownCell();
+            crown = new GameObject("Crown").AddComponent<Pickup>();
+            crown.Setup(PickupKind.Crown, SpriteFactory.Crown, Player.CellCenter(cell),
+                run.crownSize * Res, run.crownLifetime, run.crownBlinkTime);
+            SetNews("A crown appeared!");
+        }
+
+        private void RemoveCrown()
+        {
+            if (crown != null) Destroy(crown.gameObject);
+            crown = null;
+        }
+
+        /// <summary>
+        /// Early in the round: a random free spot. As the round goes on it gets more and more likely
+        /// to appear just outside an enemy's land (always, after crownNearEnemyAfter seconds).
+        /// </summary>
+        private Vector2Int FindCrownCell()
+        {
+            float progress = run.crownNearEnemyAfter <= 0f ? 1f : Mathf.Clamp01(RoundTime / run.crownNearEnemyAfter);
+            if (rng.NextDouble() < progress && TryCellNearEnemy(out Vector2Int near)) return near;
+            return FindFreeCrownCell();
+        }
+
+        private bool TryCellNearEnemy(out Vector2Int result)
+        {
+            result = default;
+            var enemies = new List<Player>();
+            foreach (Player q in players)
+                if (q.Alive && q != Human && Grid.Area(q.Id) > 0) enemies.Add(q);
+            if (enemies.Count == 0) return false;
+
+            int extra = Mathf.Max(1, Mathf.RoundToInt(run.crownEnemyDistance * Res));
+            for (int attempt = 0; attempt < 30; attempt++)
+            {
+                Player enemy = enemies[rng.Next(enemies.Count)];
+                if (!Grid.GetOwnerBounds(enemy.Id, out int minX, out int minY, out int maxX, out int maxY)) continue;
+
+                // A random cell of the enemy's land...
+                Vector2Int start = default;
+                bool found = false;
+                for (int i = 0; i < 60 && !found; i++)
+                {
+                    start = new Vector2Int(rng.Next(minX, maxX + 1), rng.Next(minY, maxY + 1));
+                    found = Grid.GetOwner(start.x, start.y) == enemy.Id;
+                }
+                if (!found) continue;
+
+                // ...then walk in a random direction until we leave their land, and a little further.
+                float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+                Vector2 dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                Vector2 pos = Player.CellCenter(start);
+                int outside = -1;
+                for (int step = 0; step < Grid.Width + Grid.Height; step++)
+                {
+                    pos += dir;
+                    int x = Mathf.FloorToInt(pos.x), y = Mathf.FloorToInt(pos.y);
+                    if (!Grid.IsPlayable(x, y)) break;
+                    if (outside < 0 && Grid.GetOwner(x, y) != enemy.Id) outside = 0;
+                    if (outside >= 0 && ++outside >= extra)
+                    {
+                        var c = new Vector2Int(x, y);
+                        if (IsGoodCrownCell(c, enemy.Id)) { result = c; return true; }
+                        break;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private Vector2Int FindFreeCrownCell()
+        {
+            for (int attempt = 0; attempt < 300; attempt++)
+            {
+                var c = new Vector2Int(rng.Next(1, Grid.Width - 1), rng.Next(1, Grid.Height - 1));
+                if (IsGoodCrownCell(c, -1) && Grid.GetOwner(c.x, c.y) == 0) return c;
+            }
+            for (int attempt = 0; attempt < 2000; attempt++)
+            {
+                var c = new Vector2Int(rng.Next(0, Grid.Width), rng.Next(0, Grid.Height));
+                if (Grid.IsPlayable(c.x, c.y)) return c;
+            }
+            return new Vector2Int(Grid.Width / 2, Grid.Height / 2);
+        }
+
+        /// <summary>Playable, not on a trail, not on the given player's land, and not hugging a wall.</summary>
+        private bool IsGoodCrownCell(Vector2Int c, int notOwner)
+        {
+            if (!Grid.IsPlayable(c.x, c.y) || Grid.GetTrail(c.x, c.y) != 0) return false;
+            if (notOwner > 0 && Grid.GetOwner(c.x, c.y) == notOwner) return false;
+            int m = 2 * Res;
+            return Grid.IsPlayable(c.x - m, c.y) && Grid.IsPlayable(c.x + m, c.y) &&
+                   Grid.IsPlayable(c.x, c.y - m) && Grid.IsPlayable(c.x, c.y + m);
         }
 
         private IEnumerator RespawnLater(Player p)
