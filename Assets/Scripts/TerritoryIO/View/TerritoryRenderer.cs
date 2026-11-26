@@ -7,7 +7,14 @@ using UnityEngine;
 namespace TerritoryIO.View
 {
     /// <summary>
-    /// Draws the whole arena as one Texture2D.
+    /// Draws the whole arena.
+    ///
+    /// SHADER MODE (default, GameSettings.landShader): the texture holds one texel per cell with the
+    /// owner's id, and the TerritoryLand shader (Assets/Resources) draws smooth, anti-aliased borders
+    /// for every screen pixel. Sharp at any zoom or screen size, and cheaper than the old way
+    /// (a 4x smaller texture, and only the changed cell is redrawn).
+    ///
+    /// TEXTURE MODE (fallback when the shader is off or not supported):
     /// detail = texture pixels per grid cell (GameSettings.landDetail).
     ///  - detail 1: one pixel per cell (the old look; blurry with Bilinear, blocky with Point).
     ///  - detail 2-8: each cell is drawn as detail×detail pixels. Every pixel looks at the 4 nearest
@@ -39,14 +46,27 @@ namespace TerritoryIO.View
         private readonly int[] keys = new int[9]; // 3×3 neighbourhood of the cell being drawn
         private Color32[] landColors;
 
+        // Shader mode
+        private const byte EdgeWallKey = 254;
+        private const byte OutsideKey = 255;
+        private bool useShader;
+        private int bytesPerTexel = 4;
+        private NativeArray<byte> keyBytes;
+        private Texture2D paletteTexture;
+        private Material material;
+
+        /// <summary>True when the smooth land shader is drawing the land.</summary>
+        public bool UsesShader => useShader;
+
         /// <summary>Pixels per cell actually used (may be lower than asked, to respect texture size limits).</summary>
         public int Detail => detail;
 
         /// <param name="drawTrails">Paint trail cells into the texture (off when trails are drawn as smooth lines).</param>
         /// <param name="checkerSize">Size of the floor checker squares, in cells.</param>
         /// <param name="pixelsPerCell">Land sharpness (GameSettings.landDetail). Ignored when smoothEdges is off.</param>
+        /// <param name="preferShader">Use the smooth land shader when the device supports it (GameSettings.landShader).</param>
         public void Init(GridMap map, Func<int, Color32> colorForPlayer, bool smoothEdges, bool drawFrame,
-            bool drawTrails, int checkerSize, int pixelsPerCell = 1)
+            bool drawTrails, int checkerSize, int pixelsPerCell = 1, bool preferShader = true)
         {
             drawTrailCells = drawTrails;
             checkerCells = Mathf.Max(1, checkerSize);
@@ -55,6 +75,98 @@ namespace TerritoryIO.View
 
             landColors = new Color32[grid.MaxPlayers + 1];
             for (int id = 1; id <= grid.MaxPlayers; id++) landColors[id] = Palette.Land(playerColor(id));
+
+            var sr = gameObject.AddComponent<SpriteRenderer>();
+            sr.sortingOrder = 0;
+
+            if (preferShader && smoothEdges && grid.MaxPlayers < EdgeWallKey && TryInitShader(sr))
+            {
+                useShader = true;
+                detail = 1;
+            }
+            else
+            {
+                InitTexture(sr, smoothEdges, pixelsPerCell);
+            }
+
+            // Wall frame around a rectangular arena (other shapes draw their walls in the texture).
+            if (drawFrame)
+            {
+                var wall = SpriteFactory.CreateSquare("Wall", transform, Palette.Wall, -1);
+                wall.transform.localPosition = new Vector3(grid.Width * 0.5f, grid.Height * 0.5f, 0f);
+                float border = Mathf.Max(1f, checkerCells / 4f); // about 0.5 world units on each side
+                wall.transform.localScale = new Vector3(grid.Width + border, grid.Height + border, 1f);
+            }
+
+            grid.CellChanged += OnCellChanged;
+            RedrawAll();
+        }
+
+        /// <summary>Sets up the smooth land shader. Returns false (and changes nothing) if it can't run here.</summary>
+        private bool TryInitShader(SpriteRenderer sr)
+        {
+            var shader = Resources.Load<Shader>("TerritoryLand");
+            if (shader == null || !shader.isSupported)
+            {
+                Debug.LogWarning("Territory.io: smooth land shader not available, using the texture fallback.");
+                return false;
+            }
+            if (Mathf.Max(grid.Width, grid.Height) > SystemInfo.maxTextureSize) return false;
+
+            // One texel per cell. R8 = owner only (smallest upload); RGBA32 when trails are drawn as cells too.
+            var format = drawTrailCells ? TextureFormat.RGBA32 : TextureFormat.R8;
+            if (!SystemInfo.SupportsTextureFormat(format)) format = TextureFormat.RGBA32;
+            bytesPerTexel = format == TextureFormat.R8 ? 1 : 4;
+
+            // linear: true = the ids are data, not colours, so no sRGB conversion may touch them.
+            texture = new Texture2D(grid.Width, grid.Height, format, false, true)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                anisoLevel = 0,
+                name = "TerritoryKeys"
+            };
+            keyBytes = texture.GetRawTextureData<byte>();
+            texWidth = grid.Width;
+            cellDirty = new bool[grid.CellCount];
+
+            // Palette: row 0 = land colour per key, row 1 = trail colour per player.
+            paletteTexture = new Texture2D(256, 2, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                name = "TerritoryPalette"
+            };
+            var pal = new Color32[512];
+            for (int id = 1; id <= grid.MaxPlayers; id++)
+            {
+                pal[id] = landColors[id];
+                pal[256 + id] = Color32.Lerp(playerColor(id), new Color32(255, 255, 255, 255), 0.35f); // same as Palette.Trail
+            }
+            pal[EdgeWallKey] = Palette.Wall;
+            pal[OutsideKey] = Palette.Background;
+            paletteTexture.SetPixels32(pal);
+            paletteTexture.Apply(false, true); // no longer needs to be readable
+
+            material = new Material(shader) { name = "TerritoryLand" };
+            material.SetTexture("_MainTex", texture);
+            material.SetTexture("_Palette", paletteTexture);
+            material.SetVector("_GridSize", new Vector4(grid.Width, grid.Height, 1f / grid.Width, 1f / grid.Height));
+            material.SetColor("_FloorA", Palette.EmptyA);
+            material.SetColor("_FloorB", Palette.EmptyB);
+            material.SetFloat("_Checker", checkerCells);
+            material.SetFloat("_TrailCells", drawTrailCells ? 1f : 0f);
+
+            // pixelsPerUnit = 1 keeps 1 cell = 1 world unit. FullRect: one plain quad.
+            sprite = Sprite.Create(texture, new Rect(0, 0, grid.Width, grid.Height), Vector2.zero, 1f, 0,
+                SpriteMeshType.FullRect);
+            sr.sprite = sprite;
+            sr.sharedMaterial = material;
+            return true;
+        }
+
+        private void InitTexture(SpriteRenderer sr, bool smoothEdges, int pixelsPerCell)
+        {
 
             // Keep the texture within what the device can handle (phones: 2048, PC: 4096).
             detail = smoothEdges ? Mathf.Clamp(pixelsPerCell, 1, 8) : 1;
@@ -81,23 +193,10 @@ namespace TerritoryIO.View
             pixels = texture.GetRawTextureData<Color32>();
             cellDirty = new bool[grid.CellCount];
 
-            var sr = gameObject.AddComponent<SpriteRenderer>();
-            // pixelsPerUnit = detail keeps 1 cell = 1 world unit.
-            sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), Vector2.zero, detail);
+            // pixelsPerUnit = detail keeps 1 cell = 1 world unit. FullRect: one plain quad.
+            sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), Vector2.zero, detail, 0,
+                SpriteMeshType.FullRect);
             sr.sprite = sprite;
-            sr.sortingOrder = 0;
-
-            // Wall frame around a rectangular arena (other shapes draw their walls in the texture).
-            if (drawFrame)
-            {
-                var wall = SpriteFactory.CreateSquare("Wall", transform, Palette.Wall, -1);
-                wall.transform.localPosition = new Vector3(grid.Width * 0.5f, grid.Height * 0.5f, 0f);
-                float border = Mathf.Max(1f, checkerCells / 4f); // about 0.5 world units on each side
-                wall.transform.localScale = new Vector3(grid.Width + border, grid.Height + border, 1f);
-            }
-
-            grid.CellChanged += OnCellChanged;
-            RedrawAll();
         }
 
         private void OnDestroy()
@@ -105,6 +204,8 @@ namespace TerritoryIO.View
             if (grid != null) grid.CellChanged -= OnCellChanged;
             if (sprite != null) Destroy(sprite);
             if (texture != null) Destroy(texture);
+            if (paletteTexture != null) Destroy(paletteTexture);
+            if (material != null) Destroy(material);
         }
 
         public void RedrawAll()
@@ -119,7 +220,7 @@ namespace TerritoryIO.View
 
         private void OnCellChanged(int x, int y)
         {
-            if (detail == 1)
+            if (detail == 1 || useShader)
             {
                 MarkDirty(x, y);
                 return;
@@ -161,6 +262,28 @@ namespace TerritoryIO.View
 
         private void DrawCell(int cx, int cy)
         {
+            if (useShader)
+            {
+                // Owner key (+ trail key) only; the shader does the rest.
+                int i = (cy * texWidth + cx) * bytesPerTexel;
+                byte key;
+                if (grid.IsPlayable(cx, cy)) key = (byte)grid.GetOwner(cx, cy);
+                else
+                {
+                    bool edge = grid.IsPlayable(cx + 1, cy) || grid.IsPlayable(cx - 1, cy) ||
+                                grid.IsPlayable(cx, cy + 1) || grid.IsPlayable(cx, cy - 1);
+                    key = edge ? EdgeWallKey : OutsideKey;
+                }
+                keyBytes[i] = key;
+                if (bytesPerTexel == 4)
+                {
+                    keyBytes[i + 1] = drawTrailCells && key < EdgeWallKey ? (byte)grid.GetTrail(cx, cy) : (byte)0;
+                    keyBytes[i + 2] = 0;
+                    keyBytes[i + 3] = 255;
+                }
+                return;
+            }
+
             if (detail == 1)
             {
                 pixels[grid.Index(cx, cy)] = ColorOf(cx, cy);

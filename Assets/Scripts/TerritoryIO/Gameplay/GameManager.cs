@@ -147,7 +147,7 @@ namespace TerritoryIO.Gameplay
 
             territory = new GameObject("Territory").AddComponent<TerritoryRenderer>();
             territory.Init(Grid, id => players[id - 1].Color, run.smoothLandEdges,
-                run.mapShape == MapShape.Rectangle, !run.smoothTrails, 4 * Res, run.landDetail);
+                run.mapShape == MapShape.Rectangle, !run.smoothTrails, 4 * Res, run.landDetail, run.landShader);
 
             hud = new GameObject("HUD").AddComponent<HudController>();
             hud.Init(this);

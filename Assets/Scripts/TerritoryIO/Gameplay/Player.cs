@@ -61,11 +61,11 @@ namespace TerritoryIO.Gameplay
             if (sprite == null)
             {
                 // Default look: outlined square with an "eye" showing the direction.
-                var outline = SpriteFactory.CreateSquare("Outline", visual, Palette.HeadOutline, 9);
+                var outline = SpriteFactory.CreateRoundedSquare("Outline", visual, Palette.HeadOutline, 9);
                 outline.transform.localScale = Vector3.one * headSize * 1.15f;
-                var body = SpriteFactory.CreateSquare("Body", visual, color, 10);
+                var body = SpriteFactory.CreateRoundedSquare("Body", visual, color, 10);
                 body.transform.localScale = Vector3.one * headSize * 0.85f;
-                var eye = SpriteFactory.CreateSquare("Eye", visual, Palette.HeadOutline, 11);
+                var eye = SpriteFactory.CreateRoundedSquare("Eye", visual, Palette.HeadOutline, 11);
                 eye.transform.localScale = Vector3.one * headSize * 0.28f;
                 eye.transform.localPosition = new Vector3(headSize * 0.2f, 0f, 0f);
             }
@@ -101,8 +101,8 @@ namespace TerritoryIO.Gameplay
             trailLine.sharedMaterial = lineMaterial;
             trailLine.useWorldSpace = true;
             trailLine.widthMultiplier = width;
-            trailLine.numCapVertices = 4;
-            trailLine.numCornerVertices = 4;
+            trailLine.numCapVertices = 8;    // round, smooth ends
+            trailLine.numCornerVertices = 6; // smooth bends
             trailLine.sortingOrder = 5; // above land (0), below heads (10)
             Color c = Color32.Lerp(Color, new Color32(255, 255, 255, 255), 0.35f);
             trailLine.startColor = c;
