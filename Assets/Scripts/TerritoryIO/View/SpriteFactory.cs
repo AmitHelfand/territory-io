@@ -10,6 +10,7 @@ namespace TerritoryIO.View
         private static Sprite arrow;
 
         private static Sprite roundedSquare;
+        private static Sprite dot;
 
         // All shapes below are drawn from a "signed distance" (negative inside, positive outside, in
         // texture pixels), so every edge gets exactly one pixel of anti-aliasing and mipmaps keep them
@@ -71,6 +72,23 @@ namespace TerritoryIO.View
                     return Fill(d, white);
                 });
                 return roundedSquare;
+            }
+        }
+
+        /// <summary>White disc with a dark outline (minimap player dots; tint it with the player colour).</summary>
+        public static Sprite Dot
+        {
+            get
+            {
+                if (dot != null) return dot;
+                const int n = 64;
+                var white = new Color32(255, 255, 255, 255);
+                dot = Build("Dot", n, n, (x, y) =>
+                {
+                    float d = new Vector2(x - n * 0.5f, y - n * 0.5f).magnitude - 22f;
+                    return Layers(d, 8f, white, Palette.HeadOutline);
+                });
+                return dot;
             }
         }
 

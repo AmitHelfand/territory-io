@@ -99,7 +99,7 @@ Assets/Scripts/TerritoryIO/
 │   ├─ BotBrain.cs        The AI: decides where each bot goes.
 │   ├─ IPlayerBrain.cs    A small "contract" both HumanInput and BotBrain follow.
 │   ├─ MapShapes.cs       Builds the map shape (circle, donut, your own image…).
-│   ├─ PlayerOptions.cs   The start screen's Settings (name, bots, difficulty, map, graphics, controls).
+│   ├─ PlayerOptions.cs   The start screen's Settings (name, bots, difficulty, map, graphics, controls, minimap).
 │   └─ HighScores.cs      Top 10 rounds + games, wins, win rate. Saved on the device.
 │
 ├─ Core/                  ← pure logic, no graphics
@@ -109,6 +109,7 @@ Assets/Scripts/TerritoryIO/
 ├─ View/                  ← what you see
 │   ├─ TerritoryRenderer.cs  Draws the land with the smooth land shader (Assets/Resources).
 │   ├─ HudController.cs      Score, leaderboard, pause button/panel, Game Over / Victory panel.
+│   ├─ Minimap.cs            The small map of the whole arena in a corner (land, player dots, crown).
 │   ├─ MainMenu.cs           The start screen and its Settings and High Scores pages.
 │   ├─ UiKit.cs              Helpers that build buttons, texts and panels in code.
 │   ├─ DisplaySetup.cs       Anti-aliasing, render scale, phone resolution, frame rate.
@@ -182,7 +183,7 @@ then click `Game` and drag the file into the **Settings** slot of GameManager.
 
 | Kind of field | When it applies |
 |---|---|
-| Speeds, turn rates, camera size | **Immediately**, even while playing |
+| Speeds, turn rates, camera size, minimap (except Minimap Detail) | **Immediately**, even while playing |
 | Bots, images, start shape | Next round (press Space after Game Over) or next Play |
 | Arena size, map shape | Next time you press Play |
 
@@ -263,6 +264,15 @@ be bigger than 2048 pixels on phones or 4096 on PC; code: `View/TerritoryRendere
 **Your own player image**
 1. Drag a PNG into Assets. Click it → Texture Type = **Sprite (2D and UI)** → Apply.
 2. Drag it into **Human Sprite**. Draw the image facing **right**, or use Sprite Angle Offset.
+
+**Minimap: bigger, smaller, other corner, or off**
+- In GameSettings, section **Minimap**: Show Minimap (on/off), Minimap Size (260 = default,
+  try 200 on a small phone or 350 on PC), Minimap Corner (TopRight under the leaderboard is the default),
+  Minimap Opacity (lower = more see-through).
+- Minimap Updates Per Second (5) = how often the land on it is redrawn. The dots always move smoothly.
+  Lower it to 2–3 if a weak phone stutters. Minimap Detail (160) = how sharp the land on it is.
+- On the phone (no Inspector) use the start screen: **SETTINGS → Minimap → On / Off**.
+  "Default" follows Show Minimap in the GameSettings file.
 
 **Save several setups**
 Create more settings files (e.g. `Settings_Easy`, `Settings_Hard`) and drag the one you want
